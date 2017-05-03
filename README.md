@@ -26,10 +26,12 @@ making the server publicly read-only (it's not quite perfect).
 ## Data model
 
 The app stores the current tiddlers in Cloud Datastore as Tiddler entities.
-It also stores every version of every tiddler as TiddlerHistory entities.
+
+The app also stores every version of every tiddler as TiddlerHistory entities, 
+if ```WriteTiddlerHistory == true``` in the Go code, by default it is ```false```.
 Currently nothing reads the TiddlerHistory, but in case of a mistake that
 wipes out important Tiddler contents it should be possible to reconstruct
-lost data from the TiddlerHistory.
+lost data from the TiddlerHistory. 
 
 The TiddlyWiki downloaded as index.html that runs in the browser
 downloads (through the JSON API) a master list of all tiddlers and their
@@ -40,7 +42,7 @@ tiddler content on demand.
 
 Create an Google App Engine standard app and deploy with
 
-	appcfg.py -A your-app -V your-version update .
+	gcloud app deploy app.yaml --project your-app --version your-version-id
 
 Then visit https://your-app.appspot.com/. As noted above, only admins
 will have access to the content.

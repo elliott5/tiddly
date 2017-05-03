@@ -58,6 +58,9 @@ import (
 // in the wiki. It seems like the TiddlyWeb plugin or the core syncer module
 // would need changes to understand a new "read-only" mode.
 
+// WriteTiddlerHistory controls if tiddler alterations are written as TiddlerHistory entries in the datastore.
+const WriteTiddlerHistory = false
+
 func init() {
 	http.HandleFunc("/", authCheck(main))
 	http.HandleFunc("/auth", authCheck(auth))
@@ -268,10 +271,12 @@ func putTiddler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key2 := datastore.NewKey(ctx, "TiddlerHistory", title+"#"+fmt.Sprint(t.Rev), 0, nil)
-	if _, err := datastore.Put(ctx, key2, &t); err != nil {
-		http.Error(w, err.Error(), 500)
-		return
+	if WriteTiddlerHistory {
+		key2 := datastore.NewKey(ctx, "TiddlerHistory", title+"#"+fmt.Sprint(t.Rev), 0, nil)
+		if _, err := datastore.Put(ctx, key2, &t); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
 	}
 
 	etag := fmt.Sprintf("\"bag/%s/%d:%x\"", url.QueryEscape(title), rev, md5.Sum(data))
@@ -301,9 +306,11 @@ func deleteTiddler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	key2 := datastore.NewKey(ctx, "TiddlerHistory", title+"#"+fmt.Sprint(t.Rev), 0, nil)
-	if _, err := datastore.Put(ctx, key2, &t); err != nil {
-		http.Error(w, err.Error(), 500)
-		return
+	if WriteTiddlerHistory {
+		key2 := datastore.NewKey(ctx, "TiddlerHistory", title+"#"+fmt.Sprint(t.Rev), 0, nil)
+		if _, err := datastore.Put(ctx, key2, &t); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
 	}
 }
