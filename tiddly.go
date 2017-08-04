@@ -299,16 +299,21 @@ func deleteTiddler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	t.Rev++
-	t.Meta = ""
-	t.Text = ""
-	if _, err := datastore.Put(ctx, key, &t); err != nil {
-		http.Error(w, err.Error(), 500)
-		return
-	}
 	if WriteTiddlerHistory {
+		t.Rev++
+		t.Meta = ""
+		t.Text = ""
+		if _, err := datastore.Put(ctx, key, &t); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
 		key2 := datastore.NewKey(ctx, "TiddlerHistory", title+"#"+fmt.Sprint(t.Rev), 0, nil)
 		if _, err := datastore.Put(ctx, key2, &t); err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+	} else {
+		if err := datastore.Delete(ctx, key); err != nil {
 			http.Error(w, err.Error(), 500)
 			return
 		}
