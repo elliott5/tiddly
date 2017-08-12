@@ -65,6 +65,7 @@ func init() {
 	http.HandleFunc("/", authCheck(main))
 	http.HandleFunc("/auth", authCheck(auth))
 	http.HandleFunc("/status", authCheck(status))
+	http.HandleFunc("/search/", authCheck(search))
 	http.HandleFunc("/recipes/all/tiddlers/", authCheck(tiddler))
 	http.HandleFunc("/recipes/all/tiddlers.json", authCheck(tiddlerList))
 	http.HandleFunc("/bags/bag/tiddlers/", authCheck(deleteTiddler))
@@ -318,4 +319,52 @@ func deleteTiddler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+// search is a very simple hack at present, just exact match on the text in the path after "/search/".
+// TODO path unescape and pattern matching + integration into TiddlyWiki...
+func search(w http.ResponseWriter, r *http.Request) {
+	url, err := url.Parse(r.RequestURI)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	term := strings.TrimPrefix(url.Path, "/search/")
+	ctx := appengine.NewContext(r)
+	q := datastore.NewQuery("Tiddler")
+	it := q.Run(ctx)
+	var buf bytes.Buffer
+	sep := ""
+	buf.WriteString("[")
+	for {
+		var t Tiddler
+		_, err := it.Next(&t)
+		if err != nil {
+			if err == datastore.Done {
+				break
+			}
+			println("ERR", err.Error())
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		if len(t.Text) == 0 || len(t.Meta) == 0 {
+			continue
+		}
+		if strings.Contains(t.Text, term) {
+			var js map[string]interface{}
+			err := json.Unmarshal([]byte(t.Meta), &js)
+			if err != nil {
+				continue
+			}
+			if title, ok := js["title"].(string); ok {
+				title = strings.Replace(title, `"`, `\"`, -1) // escape double quotes
+				buf.WriteString(sep)
+				sep = ","
+				buf.WriteString(`"` + title + `"`)
+			}
+		}
+	}
+	buf.WriteString("]")
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(buf.Bytes())
 }
